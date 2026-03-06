@@ -57,80 +57,89 @@ class MCPClient:
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
     async def process_query(self, query: str) -> str:
-        """Process a query using OpenAI and available tools"""
-        messages = [
+        # asking MCP server what tools it has:
+        tool_response = await self.session.list_tools()
+        # convert to OpenAI format
+        available_tools = [
             {
-                "role": "user",
-                "content": query
+                "type": "function",
+                "name": tool.name,
+                "description": tool.description or "",
+                "parameters": tool.inputSchema,
             }
+            for tool in tool_response.tools
         ]
 
-        response = await self.session.list_tools()
-        available_tools = [{
-            "name": tool.name,
-            "description": tool.description,
-            "input_schema": tool.inputSchema,
-            "type": "function",
-        } for tool in response.tools]
-
-        #print("tools available", available_tools)
-        # Initial openAI call this decides which tool(s) should be used
-        response = self.client.responses.create(
-            model=DEPLOYMENT_NAME,
-            input=messages,
-            tools=available_tools,
-            max_output_tokens=1000
-        )
-
-        # Process response and handle tool calls
         final_text = []
 
-        # This only looks at one tool not multiple
-        assistant_message_content = []
-        #print("response.output:", response.output)
-        for item in response.output:
-            print(item)
-            if item.type == 'message':
-                final_text.append(item.text)
-                assistant_message_content.append(content)
-            elif content.type == 'function_call':
-                tool_name = content.name
-                tool_args = json.loads(content.arguments)
+        # model receives user message + List of available tools 
+        response = self.client.responses.create(
+            model=DEPLOYMENT_NAME,
+            input=[{"role": "user", "content": query}],
+            tools=available_tools,
+            max_output_tokens=1000,
+        )
 
+        # response of LLM will be the type (function_call e.g.)
+        # name and arguments of the tool(s) it wants to call 
 
-                # Execute tool call
-                result = await self.session.call_tool(tool_name, tool_args)
-                final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
+        # loop allows the model to call mutliple tools
+        while True:
+            had_tool_call = False
+            next_inputs = []
 
-                assistant_message_content.append(content)
-                messages.append({
-                    "role": "assistant",
-                    "content": assistant_message_content
-                })
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": content.id,
-                            "content": result.content
-                        }
-                    ]
-                })
+            for item in response.output:
+                # message is just text the model responded with
+                if item.type == "message":
+                    for part in item.content:
+                        if part.type == "output_text":
+                            # extract the text an add it to final answer
+                            final_text.append(part.text)
 
-                # Send response from calling tools to the model (call model again)
-                # For example the model will receive here that from using the tools 
-                # a new task was created 
-                response = self.client.responses.create(
-                    model=DEPLOYMENT_NAME,
-                    input=messages,
-                    tools=available_tools,
-                    max_output_tokens=1000
-                )
+                # function called a tool
+                elif item.type == "function_call":
+                    had_tool_call = True
+                    tool_name = item.name
+                    tool_args = json.loads(item.arguments)
+                    # format of item:
+                    # {
+                    # "name": "create_jira_issue",
+                    # "arguments": {
+                    #     "summary": "...",
+                    #     "description": "..."
+                    # }
+                    # }
+                    # call MCP tool: create_jira_issue(summary, description)
+                    result = await self.session.call_tool(tool_name, tool_args)
 
-                final_text.append(response.content[0].text)
+                    if hasattr(result, "content"):
+                        #output from MCP tool called
+                        tool_output = str(result.content) 
+                    else:
+                        tool_output = str(result)
 
-        return "\n".join(final_text)
+                    next_inputs.append({
+                        "type": "function_call_output",
+                        "call_id": item.call_id,
+                        "output": tool_output,
+                    })
+
+            # If a tool was called the loop starts again and sets has_tool_call to false again
+            # so loop breaks when no more tools are left to call or no tools where ever called
+            if not had_tool_call:
+                break
+            
+            # the previous response ID allows the model to remember the user question,
+            # tool call and tool result
+            response = self.client.responses.create(
+                model=DEPLOYMENT_NAME,
+                previous_response_id=response.id,
+                input=next_inputs,
+                tools=available_tools,
+                max_output_tokens=1000,
+            )
+
+        return "\n".join(final_text).strip()
 
 
     async def chat_loop(self):
