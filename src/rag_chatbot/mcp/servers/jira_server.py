@@ -1,4 +1,3 @@
-from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
 import os
@@ -81,11 +80,12 @@ def jira_description(text: str):
 @mcp.tool()
 async def create_jira_issue(summary: str, description: str, proj_key: str) -> str:
     """
-    Example user request that uses this tool could be 'create a jira issue with
-    text:text and summary:summary
-
-    summary: Title of the ticket/issue
-    description: description of the issue
+    Create an Issue on Jira in a specific project/space specified by proj_key
+    
+    Args:
+        summary: Title of the issue/ticket
+        description: description of the issue
+        proj_key: project key specifying the project we want to create an Issue/task in
     """
     jira_site = "https://alexhanna413.atlassian.net/"
 
@@ -128,8 +128,9 @@ async def get_all_projects():
 @mcp.tool()
 async def list_jira_projects():
     """
-    Lists all the spaces/projects key's & name's currently visible to the user.
+    Lists all the spaces/projects key's and their name's currently visible to the user.
     A project key can for example be 'KAN'
+
     """
     response = await get_all_projects()
     if not response:
@@ -146,5 +147,8 @@ async def list_jira_projects():
 
     return projects
 
+def main():
+    mcp.run(transport="stdio")
+
 if __name__ == "__main__":
-    asyncio.run(test())
+    main()

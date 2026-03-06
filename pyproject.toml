@@ -8,4 +8,5 @@ dependencies = [
     "httpx>=0.28.1",
     "langextract>=1.1.1",
     "mcp[cli]>=1.26.0",
+    "openai>=2.26.0",
 ]
