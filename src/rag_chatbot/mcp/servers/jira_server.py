@@ -1,27 +1,150 @@
 from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
+import os
+from dotenv import load_dotenv
+from requests.auth import HTTPBasicAuth
+import json
+import asyncio
+import requests
+
+load_dotenv()
 
 
 # Initialize FastMCP server
 mcp = FastMCP("jira_server")
 
+project_name = "MCP-test"
+
+PROJ_KEY="KAN"
+
 BASE_DOMAIN = "alexhanna413"
-JIRA_API_BASE = f"https://{BASE_DOMAIN}.atlassian.net/rest/api/3/issue" # /issue is for creating issues
+JIRA_API_BASE = f"https://{BASE_DOMAIN}.atlassian.net/rest/api/3" # /issue is for creating issues
+
+JIRA_API_KEY = os.getenv("JIRA_API_TOKEN")
+JIRA_API_EMAIL = os.getenv("JIRA_EMAIL")
 
 
-async def make_jira_request(url: str, payload: dict, ):
-    headers = {}
-    async with httpx.AsyncClient as client:
+
+
+async def make_jira_issue_request(proj_key: str="KAN", summary: str="", description: str=""):
+    url = f"{JIRA_API_BASE}/issue"
+    headers = {
+    "Accept": "application/json", # content type client receives
+    "Content-Type": "application/json" # content type of request client sends
+    }
+    auth = HTTPBasicAuth(JIRA_API_EMAIL, JIRA_API_KEY)
+    payload = {
+        "fields": {
+            "project": {
+                "key": proj_key
+            },
+            "summary": summary,
+            "description": jira_description(description),
+            "issuetype": {
+                "name": "Task"
+            }
+        }
+    }
+    async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, headers=headers, timeout=30.0)
+            response = await client.post(
+                url=url,
+                headers=headers,
+                auth=auth,
+                json=payload,
+                timeout=30.0)
             response.raise_for_status()
-            return response.json()
-        except Exception:
-            return Exception
+            return response.json() # JSON response should contain id, key and url to issue
+        except Exception as e:
+            return str(e)
     
-
+#helper function
+def jira_description(text: str):
+    """
+    Takes text for description of a task and puts it in the correct format
+    for the payload in the request
+    """
+    return {
+        "type": "doc",
+        "version": 1,
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {"type": "text", "text": text}
+                ]
+            }
+        ]
+    }
 
 @mcp.tool()
-async def create_ticket():
-    pass
+async def create_jira_issue(summary: str, description: str, proj_key: str) -> str:
+    """
+    Example user request that uses this tool could be 'create a jira issue with
+    text:text and summary:summary
+
+    summary: Title of the ticket/issue
+    description: description of the issue
+    """
+    jira_site = "https://alexhanna413.atlassian.net/"
+
+    response = await make_jira_issue_request(
+        proj_key=proj_key,
+        summary=summary,
+        description=description)
+    if not response:
+        return "Unable to make Jira Request"
+    return f"""
+        "issue_key": {response['key']},
+        "issue_url":{jira_site}/browse/{response['key']},
+        "message": Jira issue **{response['key']}** created successfully"
+    """
+
+async def test():
+    response = await list_jira_projects()
+
+    print(response)
+
+async def get_all_projects():   
+    url = f"{JIRA_API_BASE}/project/search"
+    headers = {
+    "Accept": "application/json", # content type client receives
+    #"Content-Type": "application/json" # content type of request client sends
+    }
+    auth = HTTPBasicAuth(JIRA_API_EMAIL, JIRA_API_KEY)
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                url=url,
+                headers=headers,
+                auth=auth,
+                timeout=30.0)
+            response.raise_for_status()
+            return response.json() # JSON response should contain id, key and url to issue
+        except Exception as e:
+            return str(e)
+
+@mcp.tool()
+async def list_jira_projects():
+    """
+    Lists all the spaces/projects key's & name's currently visible to the user.
+    A project key can for example be 'KAN'
+    """
+    response = await get_all_projects()
+    if not response:
+        return "Unable to make Jira Request"
+    
+    projects = [
+        {
+            "key": p["key"],
+            "name": p["name"],
+            "id": p["id"]
+        }
+        for p in response["values"]
+    ]
+
+    return projects
+
+if __name__ == "__main__":
+    asyncio.run(test())
