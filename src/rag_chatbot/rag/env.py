@@ -4,7 +4,7 @@ from azure.storage.blob import ContainerClient
 from openai import AzureOpenAI, OpenAI
 
 
-load_dotenv('.env')
+load_dotenv()
 
 TRANSCRIPT_SAS_URL = str(os.getenv("TRANSCRIPT_SAS_URL"))
 MEETING_NOTE_SAS_URL = str(os.getenv("MEETING_NOTE_SAS_URL"))

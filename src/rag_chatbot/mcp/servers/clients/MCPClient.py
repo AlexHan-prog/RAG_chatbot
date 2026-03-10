@@ -108,7 +108,7 @@ class MCPClient:
                     #     "summary": "...",
                     #     "description": "..."
                     # }
-                    # }
+
                     # call MCP tool: create_jira_issue(summary, description)
                     result = await self.session.call_tool(tool_name, tool_args)
 

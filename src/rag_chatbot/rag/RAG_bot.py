@@ -7,11 +7,20 @@ def generate_response(context: list[dict], user_query: str) -> str:
     context_texts = [doc["content"] for doc in context]
 
     context_block = "\n\n---\n\n".join(context_texts)
-    final_prompt = f"""
-    You are an assistant that answers questions using the transcript context below.
-    If the answer is not in the context, say that the transcript does not contain the information.
 
-    Context:
+    system_prompt = """
+    You are a helpful assistant.
+
+    Use the retrieved document context when it is relevant to the user's question.
+    If the user's question is about the retrieved documents, answer from that context and do not invent missing facts.
+    If the retrieved context is irrelevant or insufficient and the user is asking a general question, answer using your general knowledge.
+    If the user is specifically asking about the documents and the answer is not contained in them, say that the documents do not contain enough information.
+
+    When useful, make it clear whether your answer is based on the documents or on general knowledge.
+    """
+
+    user_prompt = f"""
+    Retrieved context:
     {context_block}
 
     User question:
@@ -22,8 +31,8 @@ def generate_response(context: list[dict], user_query: str) -> str:
     response = client.chat.completions.create(
         model=deployment_name,
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that answers based on the provided context."},
-            {"role": "user", "content": final_prompt}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
         ],
         #temperature=0.2
     )

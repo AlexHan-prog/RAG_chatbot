@@ -6,10 +6,8 @@ from sentence_transformers import CrossEncoder
 import textwrap
 import langextract as lx
 from src.rag_chatbot.rag.env import deployment_name, client
-from sentence_transformers import CrossEncoder
 import os
 from langextract import factory
-import langextract_azureopenai
 
 model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L6-v2")
 
@@ -98,8 +96,6 @@ def retrieve_context(query: str, k: int = FINAL_K) -> list[dict]:
         k_nearest_neighbors=k,
         fields="embedding"
     )
-
-    print(f"filter text: {filter_text}")
     
     
     transcript_filter = safe_filter_for_index(filter_text, "transcripts")
@@ -142,7 +138,6 @@ def retrieve_context(query: str, k: int = FINAL_K) -> list[dict]:
     )
 
     # Return final top k
-    print(combined_sorted[:k])
     return combined_sorted[:k]
 
 def safe_filter_for_index(filter_text: str, index_kind: str) -> str | None:
@@ -340,7 +335,6 @@ def langextract_to_metadata(annotated_doc):
 
         if "meetingDate" in attrs:
             try:
-                print(attrs["meetingDate"])
                 metadata["meetingDate"] = datetime.strptime(
                     attrs["meetingDate"], "%Y/%m/%d"
                 ).isoformat() + "Z"
