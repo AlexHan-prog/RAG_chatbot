@@ -30,7 +30,8 @@ async def main():
                     notes_container_client,
                     doc_type="meeting_note",
                     chunk_size=400, # smaller may be better for structured note
-                    context_chunking=True # test context chunking for meeting notes
+                    epic_chunking=True,
+                    overlap=True # test context chunking for meeting notes
                 )
             else:
                 print("Invalid choice!")
@@ -48,11 +49,13 @@ async def main():
                 context_results = response["retrieved"]
                 for result in context_results:
                     print(result["id"])
+                    # print(result["content"])
+                    # print("\n")
 
             if response.get("grounded_task", None):
                 print(response["grounded_task"])
           
-            print(response["answer"].output_text)
+            print(response["answer"])
             
                 
                 
