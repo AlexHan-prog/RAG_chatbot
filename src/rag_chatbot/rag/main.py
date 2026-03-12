@@ -1,11 +1,13 @@
 
+import asyncio
+
 from src.rag_chatbot.rag.blob_utils import chunk_from_blob
 from src.rag_chatbot.rag.embedding_utils import process_and_store_chunks
-from src.rag_chatbot.rag.RAG_bot import generate_response
+from src.rag_chatbot.rag.RAG_bot import generate_response, chat_loop
 from src.rag_chatbot.rag.retrieval_utils import retrieve_context
 from src.rag_chatbot.rag.env import transcript_container_client, notes_container_client
 
-def main():
+async def main():
     print("Welcome to the RAG Chat application\n" \
     "Commands:\n" \
     "1. Chunk; generate embedding for chunk and store chunk with embedding in vectorDB for each transcript blob\n" \
@@ -39,16 +41,30 @@ def main():
 
         elif cmd == 2:
             user_query = input("Enter your user query").strip()
-            context_results = retrieve_context(user_query)
-            for result in context_results:
-                print(result["id"])
+            response = await chat_loop(user_query)
+            print(f"mode: {response["mode"]}")
+
+            if response.get("retrieved", None):
+                context_results = response["retrieved"]
+                for result in context_results:
+                    print(result["id"])
+
+            if response.get("grounded_task", None):
+                print(response["grounded_task"].output_text)
+          
+            print(response["answer"].output_text)
+            
                 
-            answer = generate_response(context_results, user_query)
-            print(answer)
+                
         elif cmd == 3:
             return
         else:
             print("Invalid command try again") 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
+    #main()
+    question = """
+    Can you create 4 Jira issues based on Reuben's meeting notes where each Epic corresponds to a new Jira issue
+    and the title of the epic is the issue summary and the description in the epic is the description of the issue. 
+    These issues should be created for the project key of KAN"""

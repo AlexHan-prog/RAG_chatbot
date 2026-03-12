@@ -166,10 +166,7 @@ class MCPClient:
 
 async def main():
     path_to_server = r"C:\Users\alexh\Desktop\LLM_uni_project\RAG_chatbot\src\rag_chatbot\mcp\servers\jira_server.py"
-    #path_to_server = "src\\rag_chatbot\\mcp\\servers\\jira_server.py"
-    # if len(sys.argv) < 2:
-    #     print("Usage: python client.py")
-    #     sys.exit(1)
+ 
 
     client = MCPClient()
     try:

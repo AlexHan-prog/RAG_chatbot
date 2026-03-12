@@ -1,7 +1,207 @@
 
+from typing import Literal, override
+
+from pydantic import BaseModel, Field
+import time
 from src.rag_chatbot.rag.retrieval_utils import retrieve_context
 from src.rag_chatbot.rag.env import deployment_name, client
+from src.rag_chatbot.mcp.servers.clients.MCPClient import MCPClient
 
+class QueryRoute(BaseModel):
+    source: Literal["general", "rag", "mcp", "rag_then_mcp"] = Field(
+        description="Which category should the user query be placed in"
+    )
+
+class GeneralLLM:
+    """
+    General LLM just straight call to GPT
+    """
+
+    def generate_answer(user_query) -> dict:
+        response = client.responses.create(
+            model=deployment_name,
+            input = user_query
+            #temperature=0.2
+        )
+
+        return response
+    
+
+class MCPLLM:
+    path_to_server = r"C:\Users\alexh\Desktop\LLM_uni_project\RAG_chatbot\src\rag_chatbot\mcp\servers\jira_server.py"
+    def __init__(self):
+        self.client = MCPClient()
+        self.connected = False
+    
+    async def connect_to_MCPserver(self):
+        if self.connected:
+            return
+        try:
+            await self.client.connect_to_server(self.path_to_server)
+            self.connected = True
+        except Exception as e:
+            print(f"Exception occured {e}")
+            raise
+    
+    async def generate_answer(self, user_query: str) -> str:
+        
+        await self.connect_to_MCPserver()
+        
+        response = await self.client.process_query(user_query)
+        
+        return response
+    async def cleanup(self):
+        if self.connected:
+            await self.client.cleanup()
+            self.connected = False
+
+class RAGLLM:
+
+    def generate_answer(user_query, context) -> dict:
+        
+        
+        context_texts = [doc["content"] for doc in context]
+
+        context_block = "\n\n---\n\n".join(context_texts)
+
+        prompt = f"""
+        You are a helpful assistant.
+
+        Use the retrieved document context when it is relevant to the user's question.
+        If the user's question is about the retrieved documents, answer from that context and do not invent missing facts.
+        If the retrieved context is irrelevant or insufficient and the user is asking a general question, answer using your general knowledge.
+        If the user is specifically asking about the documents and the answer is not contained in them, say that the documents do not contain enough information.
+
+        When useful, make it clear whether your answer is based on the documents or on general knowledge.
+        
+
+       
+        Retrieved context:
+        {context_block}
+
+        User question:
+        {user_query}
+
+        Answer:
+        """
+
+        response = client.responses.create(
+            model=deployment_name,
+            input = prompt
+            #temperature=0.2
+        )
+
+        return response
+
+def get_routing_prompt(user_query: str) -> str:
+    prompt = f"""
+    Classify this user request into one of the following categories:
+    - general
+    - rag
+    - mcp
+    - rag_then_mcp
+
+    Definitions:
+    - general: can be answered without company documents or tool actions
+    - rag: requires searching company documents
+    - mcp: requires taking an external action using a tool
+    - rag_then_mcp: requires searching documents first, then taking an action
+
+    User query: {user_query}
+
+    - Return "general" if the query can be answered without external documents or tool actions
+    - Return "rag" if the query requires searching external documents
+    - Return "mcp" If the query specifies taking an external action using a tool
+    - Return "rag_then_mcp" If the query requires searching documents first, then taking an action. For example the query:
+    "Create Jira tickets from today's meeting notes" should be classified as "rag_then_mcp" because meeting notes can only be
+    accessed by RAG, and to perform the action MCP is needed.
+    """
+    return prompt
+
+def decide_route(user_query: str) -> str:
+    prompt = get_routing_prompt(user_query)
+
+    response = client.responses.parse(
+        model=deployment_name, # gpt-5.2-chat
+        input=prompt,
+        text_format=QueryRoute,
+    )
+
+    return response.output_parsed.source
+
+def build_grounded_task(user_query: str, context: list[dict]):
+    context_texts = [doc["content"] for doc in context]
+    context_block = "\n\n---\n\n".join(context_texts)
+
+    prompt = f"""
+    You are preparing an action request for a tool-using assistant.
+
+    Use the document context below to interpret the user's request.
+    Extract the actionable items and produce a concise tool-ready instruction.
+
+    Context:
+    {context_block}
+
+    User request:
+    {user_query}
+
+    Tool-ready instruction:
+    """
+    response = client.responses.parse(
+        model=deployment_name, # gpt-5.2-chat
+        input=prompt,
+    )
+    return response
+
+async def handle_chat(user_query: str) -> dict:
+    """
+    depending on route returned will call the corresponding method 
+    """
+    route = decide_route(user_query)
+
+    if route == "general":
+        return {
+            "answer": GeneralLLM.generate_answer(user_query=user_query),
+            "mode": "general",
+        }
+     
+    
+
+    elif route == "rag":
+        context = retrieve_context(user_query)
+        return {
+            "answer": RAGLLM.generate_answer(user_query=user_query, context=context),
+            "mode": "rag",
+            "retrieved": context
+        }
+
+    elif route == "mcp":
+        mcp_llm = MCPLLM()
+        return {
+            "answer": await mcp_llm.generate_answer(user_query=user_query),
+            "mode": "mcp",
+            "retrieved": context
+        }
+
+    elif route == "rag_then_mcp":
+        mcp_llm = MCPLLM()
+        try:
+            context = retrieve_context(user_query)
+            grounded_task = build_grounded_task(user_query, context)
+            mcp_result = await mcp_llm.generate_answer(user_query=grounded_task)
+            return {
+                "answer": mcp_result,
+                "mode": "rag_then_mcp",
+                "retrieved": context,
+                "grounded_task": grounded_task
+            }
+        finally:
+            await mcp_llm.cleanup()
+    else:
+        return {
+            "answer": GeneralLLM.generate_answer(user_query=user_query),
+            "mode": "general",
+        }
 
 def generate_response(context: list[dict], user_query: str) -> str:
     context_texts = [doc["content"] for doc in context]
@@ -52,3 +252,6 @@ def generate_contextualized_response(inputs: dict) -> dict:
         "prompt": user_query,
         "retrieved": context_results
     }
+
+async def chat_loop(user_query: str):
+    return await handle_chat(user_query)
