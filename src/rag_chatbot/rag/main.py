@@ -50,7 +50,7 @@ async def main():
                     print(result["id"])
 
             if response.get("grounded_task", None):
-                print(response["grounded_task"].output_text)
+                print(response["grounded_task"])
           
             print(response["answer"].output_text)
             

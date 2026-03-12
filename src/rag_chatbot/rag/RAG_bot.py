@@ -1,4 +1,5 @@
 
+import json
 from typing import Literal, override
 
 from pydantic import BaseModel, Field
@@ -151,7 +152,7 @@ def build_grounded_task(user_query: str, context: list[dict]):
         model=deployment_name, # gpt-5.2-chat
         input=prompt,
     )
-    return response
+    return response.output_text
 
 async def handle_chat(user_query: str) -> dict:
     """
@@ -177,17 +178,27 @@ async def handle_chat(user_query: str) -> dict:
 
     elif route == "mcp":
         mcp_llm = MCPLLM()
-        return {
-            "answer": await mcp_llm.generate_answer(user_query=user_query),
-            "mode": "mcp",
-            "retrieved": context
-        }
+        try:
+                
+            return {
+                "answer": await mcp_llm.generate_answer(user_query=user_query),
+                "mode": "mcp",
+                "retrieved": context
+            }
+        finally:
+            mcp_llm.cleanup()
 
     elif route == "rag_then_mcp":
         mcp_llm = MCPLLM()
         try:
             context = retrieve_context(user_query)
             grounded_task = build_grounded_task(user_query, context)
+
+            # the mcp client needs the query to be in a string format 
+            # This maintains structure while keeping the output a string
+            if not isinstance(grounded_task, str):
+                grounded_task = json.dumps(grounded_task)
+
             mcp_result = await mcp_llm.generate_answer(user_query=grounded_task)
             return {
                 "answer": mcp_result,
