@@ -17,7 +17,7 @@ class GeneralLLM:
     """
     General LLM just straight call to GPT
     """
-
+    @staticmethod
     def generate_answer(user_query) -> dict:
         response = client.responses.create(
             model=deployment_name,
@@ -25,7 +25,7 @@ class GeneralLLM:
             #temperature=0.2
         )
 
-        return response
+        return response.output_text
     
 
 class MCPLLM:
@@ -57,7 +57,7 @@ class MCPLLM:
             self.connected = False
 
 class RAGLLM:
-
+    @staticmethod
     def generate_answer(user_query, context) -> dict:
         
         
@@ -92,7 +92,7 @@ class RAGLLM:
             #temperature=0.2
         )
 
-        return response
+        return response.output_text
 
 def get_routing_prompt(user_query: str) -> str:
     prompt = f"""
@@ -183,10 +183,9 @@ async def handle_chat(user_query: str) -> dict:
             return {
                 "answer": await mcp_llm.generate_answer(user_query=user_query),
                 "mode": "mcp",
-                "retrieved": context
             }
         finally:
-            mcp_llm.cleanup()
+            await mcp_llm.cleanup()
 
     elif route == "rag_then_mcp":
         mcp_llm = MCPLLM()
