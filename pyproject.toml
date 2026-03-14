@@ -15,5 +15,6 @@ dependencies = [
     "mcp[cli]>=1.26.0",
     "openai>=2.26.0",
     "pytest>=9.0.2",
+    "redis>=7.3.0",
     "sentence-transformers>=5.2.3",
 ]
