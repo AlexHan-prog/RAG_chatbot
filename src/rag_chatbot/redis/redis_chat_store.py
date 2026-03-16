@@ -84,3 +84,7 @@ async def append_message(rdb, chat_id: str, role: str, content: str):
 
 async def update_chat_title(rdb, chat_id: str, title: str):
     await rdb.hset(f"chat:{chat_id}", "title", title)
+
+async def delete_chat(rdb, chat_id: str):
+    """Remove a chat and its messages from Redis."""
+    await rdb.delete(f"chat:{chat_id}", f"chat:{chat_id}:messages")
