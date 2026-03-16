@@ -49,11 +49,14 @@ export async function getChatMessages(chatId) {
   return data;
 }
 
-export async function sendChatMessage(chatId, message) {
+export async function sendChatMessage(chatId, message, mode) {
   const res = await fetch(`${BASE_URL}/chats/${chatId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ 
+      message,
+      mode 
+  }),
   });
 
   const data = await res.json();
