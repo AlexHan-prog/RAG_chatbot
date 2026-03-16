@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from src.rag_chatbot.rag.RAG_bot import chat_loop
@@ -22,6 +24,7 @@ class ChatCreateOut(BaseModel):
 
 class ChatIn(BaseModel):
     message: str
+    mode: Literal["auto", "llm", "rag", "mcp"] = "auto"
 
 @router.post("/chats", response_model=ChatCreateOut)
 async def create_new_chat(rdb = Depends(get_redis)):
@@ -65,7 +68,10 @@ async def chat(chat_id: str, chat_in: ChatIn, rdb = Depends(get_redis)):
     # store new user message in redis
     await append_message(rdb, chat_id, "user", chat_in.message)
 
-    result = await chat_loop(chat_in.message, history)
+    result = await chat_loop(user_query=chat_in.message,
+                            history=history,
+                            mode=chat_in.mode
+                            )
 
     answer = result["answer"] if isinstance(result, dict) else str(result)
 
