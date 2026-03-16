@@ -11,6 +11,16 @@ export async function createChat() {
   return data;
 }
 
+export async function deleteChat(chatId) {
+  const res = await fetch(`${BASE_URL}/chats/${chatId}`, {
+    method: 'DELETE',
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Failed to delete chat');
+  return data;
+}
+
 export async function getChats() {
   let res;
 
