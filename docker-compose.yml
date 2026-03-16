@@ -22,7 +22,9 @@ services:
       - "8000:8000"
     command: uvicorn src.rag_chatbot.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
-        - redis
+      - redis
+    env_file:
+      - .env
 
   frontend:
     build:
