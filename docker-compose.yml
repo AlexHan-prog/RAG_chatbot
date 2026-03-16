@@ -1,11 +1,14 @@
 
+# services define all the containers that make up the app
 services:
 
   redis:
+    # rather than building redis container use official redis image
     image: redis:7
     container_name: rag-redis
     ports:
       - "6379:6379"
+    # volumes attaches a docker volume called redis_data to /data inside the Redis container
     volumes:
       - redis_data:/data
 
@@ -17,8 +20,9 @@ services:
     container_name: rag_backend
     ports:
       - "8000:8000"
+    command: uvicorn src.rag_chatbot.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
-      - redis
+        - redis
 
   frontend:
     build:
@@ -28,7 +32,7 @@ services:
       - "5173:5173"
     depends_on:
       - backend
-
+    # watch is just for development remove for deployment
     develop:
       watch:
         - action: sync+restart
