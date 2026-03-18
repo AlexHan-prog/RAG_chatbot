@@ -15,7 +15,7 @@ function ChatInput({
   const modeMenuRef = useRef(null);
 
   const modes = [
-    { value: 'auto', label: 'Auto', short: 'Auto' },
+    { value: 'auto', label: 'Auto', short: 'Auto (default)' },
     { value: 'llm', label: 'LLM', short: 'LLM' },
     { value: 'rag', label: 'RAG', short: 'RAG' },
     { value: 'mcp', label: 'MCP', short: 'MCP' },

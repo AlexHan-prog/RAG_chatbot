@@ -21,9 +21,7 @@ function Chatbot() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [openChatMenuId, setOpenChatMenuId] = useState(null);
-  const [selectedMode, setSelectedMode] = useState(() => {
-    return localStorage.getItem("chatMode") || "auto";
-  });
+  const [selectedMode, setSelectedMode] = useState("auto");
 
   
   useEffect(() => {
@@ -111,6 +109,7 @@ function Chatbot() {
 
       setActiveChatId(newChat.id);
       setMessages([]);
+      setSelectedMode("auto");
     } catch (err) {
       console.error('Failed to create chat:', err);
     }
@@ -369,8 +368,28 @@ function Chatbot() {
         ) : messages.length === 0 ? (
           <div className="mt-3 font-urbanist text-primary-blue text-xl font-light space-y-2">
             <p>👋 Welcome!</p>
-            <p>I have access to earnings calls from multiple companies and meeting notes</p>
-            <p>I also have capability to interact with Jira and create issues using MCP</p>
+            <p>
+            I can answer questions using company knowledge, help analyse meeting notes and earnings calls, or even create Jira issues.
+            </p>
+
+            <p><strong>Modes:</strong></p>
+
+            <p>
+            <strong>Auto</strong> – I’ll automatically choose the best way to handle your request based on what you ask.
+            </p>
+
+            <p>
+            <strong>LLM</strong> – For general questions or explanations that don’t require company documents or external actions.
+            </p>
+
+            <p>
+            <strong>RAG</strong> – For questions that need information from documents like meeting notes or earnings call transcripts.
+            </p>
+
+            <p>
+            <strong>MCP</strong> – For requests that involve taking action in external systems, such as creating Jira issues.
+            </p>
+
             {!activeChat && <p>Create a new chat to get started.</p>}
           </div>
         ) : null}
