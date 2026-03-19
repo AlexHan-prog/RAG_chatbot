@@ -23,9 +23,31 @@ class GeneralLLM:
     """
     General LLM just straight call to GPT
     """
+
     @staticmethod
     def generate_answer(user_query: str, history: list[dict]) -> str:
-        messages = []
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a helpful internal assistant for company employees. "
+                    "Your primary role is to guide users on how to use this AI system effectively. "
+
+                    "By default, explain what the system can do and how to use its different modes: "
+                    "- General mode: for explanations, brainstorming, drafting, and general questions "
+                    "- RAG mode: for retrieving and answering questions based on internal documents such as meeting notes and transcripts "
+                    "- MCP mode: for performing actions in external systems such as creating Jira issues "
+
+                    "If a user's request is unclear or general (e.g. 'help', 'what can you do'), respond with a clear explanation of these capabilities. "
+
+                    "If the user asks a specific question, answer it clearly and professionally, "
+                    "but also guide them toward the most appropriate mode if relevant. "
+
+                    "You do not have access to documents or external tools in this mode, so do not claim to retrieve data or perform actions. "
+                    "Instead, explain which mode should be used when needed."
+                )
+            }
+        ]
 
         for msg in history[-HISTORY_LEN:]:
             messages.append({
