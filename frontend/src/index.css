@@ -61,6 +61,7 @@ layer(base);
   color utility to any element that depends on these defaults.
 */
 @layer base {
+  
   *,
   ::after,
   ::before,
@@ -107,6 +108,7 @@ layer(base);
 @layer base {
   body, html, #root {
     @apply text-main-text h-full;
+    background-color: #f8fafc;
   }
 
   ::-webkit-scrollbar {
@@ -124,6 +126,14 @@ layer(base);
   ::-webkit-scrollbar-thumb {
     @apply bg-primary-blue/50 border border-white rounded-sm;
   }
+}
+
+.bg-white {
+  background-color: #f8fafc;
+}
+
+.bg-white\/60 {
+  background-color: rgba(252, 248, 251, 0.6);
 }
 
 .dark body, .dark html, .dark #root {
