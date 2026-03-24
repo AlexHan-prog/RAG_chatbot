@@ -17,6 +17,20 @@ MEETING_NOTES_INDEX = "meeting-notes"
 # Search client manages uploading and querying documents in a specific index
 # The specific index the searchClient operates on in this case is transcript-chunks
 def make_search_client(index_name: str) -> SearchClient:
+    """
+    Create a SearchClient instance for interacting with a specific Azure AI Search index.
+
+    This client is used for:
+    - Uploading documents
+    - Querying (keyword, vector, hybrid search)
+    - Applying filters and retrieving results
+
+    Args:
+        index_name (str): Name of the Azure Search index to connect to
+
+    Returns:
+        SearchClient: Configured client for the given index
+    """
     return SearchClient(
         endpoint=search_endpoint,
         index_name=index_name,
@@ -26,7 +40,20 @@ def make_search_client(index_name: str) -> SearchClient:
 TRANSCRIPT_SEARCH_CLIENT = make_search_client(TRANSCRIPT_INDEX)
 MEETING_NOTES_SEARCH_CLIENT = make_search_client(MEETING_NOTES_INDEX)
 
-def ensure_index_exists(index_name: str):
+def ensure_index_exists(index_name: str) -> None:
+    """
+    Ensure that a given Azure Search index exists before performing operations.
+
+    If the index does not exist:
+    - Attempts to create/update all indexes
+    - Raises an error to signal that setup was required
+
+    Args:
+        index_name (str): Name of the index to check
+
+    Raises:
+        RuntimeError: If the index does not exist and needs to be created
+    """
     try:
         index_client.get_index(index_name)
     except ResourceNotFoundError:
@@ -38,6 +65,21 @@ def ensure_index_exists(index_name: str):
 
 
 def create_or_update_indexes():
+    """
+    Create or update all required Azure Search indexes.
+
+    This function:
+    - Builds index schemas using helper functions
+    - Sends them to Azure using create_or_update_index
+    - Overwrites existing indexes if schema changes
+
+    Useful for:
+    - Initial setup
+    - Schema migrations
+
+    Side Effects:
+        - Modifies Azure Search indexes
+    """
     index_client.create_or_update_index(create_transcript_index_schema(TRANSCRIPT_INDEX))
     print(f"{TRANSCRIPT_INDEX} created/updated.")
     index_client.create_or_update_index(create_meeting_notes_index_schema(MEETING_NOTES_INDEX))
@@ -47,7 +89,17 @@ def create_or_update_indexes():
 
 
 
-def delete_index_schema(index_name: str=TRANSCRIPT_INDEX):
+def delete_index_schema(index_name: str):
+    """
+    Delete an Azure Search index by name.
+
+    Args:
+        index_name (str): Name of the index to delete
+
+    Notes:
+        - Safe to call even if the index does not exist
+        - Primarily used for development/testing resets
+    """
     try:
         index_client.delete_index(index_name)
         print(f"Deleted index: {index_name}")
@@ -69,10 +121,33 @@ VECTOR_PROFILE = "my-vector-config"
 ALGO_CONFIG = "my-algorithms-config"
 
 def create_transcript_index_schema(index_name: str=TRANSCRIPT_INDEX) -> SearchIndex:
-    """"
-    Creates an index called transcript-chunks with fields of id, content and the embedding as a vector field.
-    Content is the text content of the transcript which is searchable.
-    If the index already exists it will update the index if any changes are made.
+    """
+    Define the schema for the transcript index used in Azure AI Search.
+
+    This index stores:
+    - Transcript text chunks
+    - Vector embeddings for semantic search
+    - Structured metadata for filtering (company, year, quarter, etc.)
+
+    Fields:
+        id (string): Unique identifier for each document chunk
+        content (string): Transcript text (full-text searchable)
+        embedding (vector): Dense vector for similarity search
+        docType (string): Document type (e.g. "earnings_call")
+        company (string): Company name
+        year (int): Year of the transcript
+        quarter (int): Quarter (1–4)
+        reportDate (DateTimeOffset): Derived reporting date
+
+    Vector Search:
+        - Uses HNSW algorithm for approximate nearest neighbour search
+        - Configured via VECTOR_PROFILE and ALGO_CONFIG
+
+    Args:
+        index_name (str): Name of the index
+
+    Returns:
+        SearchIndex: Fully defined index schema (not yet created in Azure)
     """
     return SearchIndex(
         name=index_name,
@@ -131,6 +206,28 @@ def create_transcript_index_schema(index_name: str=TRANSCRIPT_INDEX) -> SearchIn
     )
 
 def create_meeting_notes_index_schema(index_name: str=MEETING_NOTES_INDEX) -> SearchIndex:
+    """
+    Define the schema for the meeting notes index used in Azure AI Search.
+
+    This index stores:
+    - Meeting note text
+    - Vector embeddings for semantic search
+    - Metadata specific to meetings (author, meeting date)
+
+    Fields:
+        id (string): Unique identifier
+        content (string): Meeting note text
+        docType (string): Document type (e.g. "meeting_note")
+        meetingDate (DateTimeOffset): Date of the meeting
+        author (string): Author of the notes
+        embedding (vector): Semantic embedding for vector search
+
+    Args:
+        index_name (str): Name of the index
+
+    Returns:
+        SearchIndex: Fully defined index schema (not yet created in Azure)
+    """
     return SearchIndex(
         name=index_name,
         fields=[
@@ -161,5 +258,4 @@ def create_meeting_notes_index_schema(index_name: str=MEETING_NOTES_INDEX) -> Se
 
 
 if __name__ == "__main__":
-    delete_index_schema(MEETING_NOTES_INDEX)
-    create_or_update_indexes()
+    pass
