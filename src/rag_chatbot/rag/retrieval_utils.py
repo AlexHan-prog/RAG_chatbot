@@ -19,6 +19,15 @@ class RetrievalRoute(BaseModel):
 
 
 def get_routing_prompt(query: str) -> str:
+    """
+    Returns prompt used by LLM that decides route
+
+    Args:
+        query (str): query that is placed into prompt to send to LLm
+
+    Returns:
+        str: prompt with query embedded
+    """
     return textwrap.dedent(f"""\
     You are a retrieval router for an internal knowledge assistant.
 
@@ -47,6 +56,15 @@ def get_routing_prompt(query: str) -> str:
     """)
 
 def route_query(query: str) -> RetrievalRoute:
+    """
+    Calls LLM with specific prompt that determines which index documents are retrieved from (earnings calls, meeting notes or both)
+
+    Args:
+        query (str): User's query
+    
+    Returns:
+        RetrievalRoute: Object which has attribute source which is one of "transcripts", "meeting_notes", "both"
+    """
     prompt = get_routing_prompt(query)
 
     response = client.responses.parse(
@@ -127,15 +145,21 @@ def retrieve_context(query: str, k: int = FINAL_K) -> list:
 def create_safe_filter_for_index(metadata: dict, index_kind: str) -> str:
     """
     Generates filter text from the metadata and filters out any metadata fields
-    that are not in the search index. E.g. if metadata
-
+    that are not in the search index. E.g. if metadata cotains 'author' and index_kind == 'earning_call' then author is not sent to build the filter with.
 
     Args:
         filter_text (dict): filter that will be applied to azure search index e.g. 'author eq John'
         index_kind (str): "transcripts" or "meeting_notes"
     
     Returns:
-        str | None: returns None if the filter contains elements that are unsafe for the index, otherwise returns the filter_text unchanged
+        str: A valid Azure AI Search OData filter string combining all fields. Example output:
+
+        "docType eq 'earnings_call' and
+         (company eq 'Apple' or company eq 'Agilent') and
+         year eq 2024 and
+         (quarter eq 2 or quarter eq 4)"
+
+        Returns an empty string if no filters are generated.
 
     """
     # Only include fields supported by index
@@ -155,8 +179,7 @@ def create_safe_filter_for_index(metadata: dict, index_kind: str) -> str:
 
 def retrieve_filter_metadata(query: str) -> dict:
     """
-    Runs full pipeline of retrieving metadata as a langextract object from query, then converting that to a dictionary of metadata,
-    then building a string filter text that can be used in Azure AI search
+    Runs full pipeline of retrieving metadata as a langextract object from query, then converting that to a dictionary of metadata.
 
     Args:
         query (str): User's query
