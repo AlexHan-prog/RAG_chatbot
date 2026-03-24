@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 from src.rag_chatbot.rag.retrieval_utils import retrieve_context
 from src.rag_chatbot.rag.env import deployment_name, client
 from src.rag_chatbot.mcp.servers.clients.MCPClient import MCPClient
-from pathlib import Path
 
 HISTORY_LEN = 6
 
@@ -21,11 +20,22 @@ class MCPRoute(BaseModel):
 
 class GeneralLLM:
     """
-    General LLM just straight call to GPT
+    General LLM just behaves like an internal company assistant but cannot perform
+    any external actions or document retrieval capabilities.
     """
 
     @staticmethod
     def generate_answer(user_query: str, history: list[dict]) -> str:
+        """
+        Generates an answer behaving as a general assistant (no RAG or MCP), answer is generated based on a query and history if it exists
+
+        Args:
+            user_query (str): The user's query
+            history (list[dict]): chat history as a list of {"role":"user or system", "content":"message"}
+        
+        Returns:
+            str: The client's response in string, text format
+        """
         messages = [
             {
                 "role": "system",
@@ -48,31 +58,51 @@ class GeneralLLM:
                 )
             }
         ]
-
+        
+        # appends last (HISTORY_LEN (6)) messages to messages array, messages sent to model
         for msg in history[-HISTORY_LEN:]:
             messages.append({
                 "role": msg["role"],
                 "content": msg["content"]
             })
 
+        # append the user query as the last message
         messages.append({"role": "user", "content": user_query})
 
+        # The client expects the last message to be the latest user_query so it should be last in the list
         response = client.chat.completions.create(
             model=deployment_name,
             messages=messages
         )
-      
+        
+        # choices is a list of possible responses, choices[0] is the first one.
         return response.choices[0].message.content
     
 
 class MCPLLM:
+    """Client for interacting with an MCP server using an LLM.
+
+    This class manages:
+    - Connection to an MCP server
+    - Formatting of user query + conversation history
+    - Sending requests via MCPClient
+
+    Attributes:
+        server_module (str): Path to the MCP server module.
+        client (MCPClient): Underlying MCP client instance.
+        connected (bool): Tracks whether the client is connected.
+    """
+
     server_module = "rag_chatbot.mcp.servers.jira_server"
-    
+
     def __init__(self):
         self.client = MCPClient()
         self.connected = False
     
-    async def connect_to_MCPserver(self):
+    async def connect_to_MCPserver(self) -> None:
+        """
+        client attempts to connect to mcp server if it has not already connected
+        """
         if self.connected:
             return
         try:
@@ -83,6 +113,16 @@ class MCPLLM:
             raise
     
     async def generate_answer(self, user_query: str, history: list[dict]) -> str:
+        """
+        returns response of mcp client which has access to tools provided by mcp server (jira_server.py)
+
+        Args:
+            user_query (str): The user's query
+            history (list[dict]): chat history as a list of {"role":"user or system", "content":"message"}
+
+        Returns:
+            str: response from mcp client
+        """
         messages = []
 
         for msg in history[-HISTORY_LEN:]:
@@ -99,19 +139,33 @@ class MCPLLM:
         response = await self.client.process_query(query=messages)
         
         return response
-    async def cleanup(self):
+    async def cleanup(self) -> None:
+        """
+        calls the cleanup function (only if the client is currently connected) from the MCP client and sets connected back to false
+        """
         if self.connected:
             await self.client.cleanup()
             self.connected = False
 
 class RAGLLM:
+    """
+    Client for generating answers using retrieved context (does not perform retrieval)
+    """
     @staticmethod
     def generate_answer(user_query: str, context: list[dict], history: list[dict]) -> str:
-        
+        """
+        Generates an answer using the provided documents exclusively.
+        If they do not contain enough information to answer the question the LLM should not hallucinate
+
+        Args:
+            user_query (str): The user's query
+            context (list[dict]): list of texts representing retrieved chunks of context
+            history (list[dict]): chat history as a list of {"role":"user or system", "content":"message"}
+        """
         
         context_texts = [doc["content"] for doc in context]
 
-        context_block = "\n\n---\n\n".join(context_texts)
+        context_block = "\n\n---\n\n".join(context_texts) # join to form one big string for ingestion into message to LLM
         messages = [
             {
                 "role": "system",
@@ -202,9 +256,19 @@ def get_routing_prompt(user_query: str) -> str:
     return prompt
 
 def decide_route(user_query: str, mode: str = "auto") -> str:
-    # if the user has specified the query mode which is anything else but auto
-    # the route should be returned as their decision, and if their choice is to use mcp,
-    # the llm should decide whether their prompt requires mcp and rag or just mcp#
+    """
+    decides mode of LLM that will generate answer based on purely the user query
+    or from the mode purposely chosen by the user.
+
+    Args:
+        user_query (str): The user's input query
+        mode (str): one of [auto (let the LLM decide), llm (general), rag, mcp,]
+    
+    Returns:
+        str: one of [general, rag, mcp, rag_then_mcp]
+    """
+    # if mode is not auto we either return that mode as selected by the user,
+    # or if the mode == "mcp" then LLM decides if mcp or rag_then_mcp #
     if mode != "auto":
         match mode:
             case "llm":
@@ -213,9 +277,11 @@ def decide_route(user_query: str, mode: str = "auto") -> str:
                 return "rag"
             case "mcp":
                 return decide_mcp_subroute(user_query)
-            case _:
+            case _: 
+                # If the mode is not auto but also does not match any of the options it should default to auto indicated by a pass which moves on
                 pass
 
+    # Reach here if mode == "auto" or not in [llm, rag, mcp]
     prompt = get_routing_prompt(user_query)
 
     response = client.responses.parse(
@@ -259,6 +325,13 @@ def build_grounded_task(user_query: str, context: list[dict]):
 async def handle_chat(user_query: str, history: list[dict], mode: str = "auto") -> dict:
     """
     depending on route returned will call the corresponding method 
+
+    Args:
+        user_query (str): The User's input query
+        history (list[dict]): chat history as a list of {"role":"user or system", "content":"message"}
+        mode: (str): one of [auto (let the LLM decide), llm (general), rag, mcp]
+    Returns:
+        dict: Containing fields: "answer", "mode", "retrieved" (optional), "grounded task" (optional)
     """
     route = decide_route(user_query, mode)
 
@@ -268,8 +341,6 @@ async def handle_chat(user_query: str, history: list[dict], mode: str = "auto") 
             "mode": "general",
         }
      
-    
-
     elif route == "rag":
         context = retrieve_context(user_query)
         # fallback in case there is no context for some reason
@@ -304,7 +375,7 @@ async def handle_chat(user_query: str, history: list[dict], mode: str = "auto") 
             grounded_task = build_grounded_task(user_query, context)
 
             # the mcp client needs the query to be in a string format 
-            # This maintains structure while keeping the output a string
+            # This maintains a json format while keeping the output a string
             if not isinstance(grounded_task, str):
                 grounded_task = json.dumps(grounded_task)
 
@@ -323,55 +394,6 @@ async def handle_chat(user_query: str, history: list[dict], mode: str = "auto") 
             "mode": "general",
         }
 
-def generate_response(context: list[dict], user_query: str) -> str:
-    context_texts = [doc["content"] for doc in context]
-
-    context_block = "\n\n---\n\n".join(context_texts)
-
-    system_prompt = """
-    You are a helpful assistant.
-
-    Use the retrieved document context when it is relevant to the user's question.
-    If the user's question is about the retrieved documents, answer from that context and do not invent missing facts.
-    If the retrieved context is irrelevant or insufficient and the user is asking a general question, answer using your general knowledge.
-    If the user is specifically asking about the documents and the answer is not contained in them, say that the documents do not contain enough information.
-
-    When useful, make it clear whether your answer is based on the documents or on general knowledge.
-    """
-
-    user_prompt = f"""
-    Retrieved context:
-    {context_block}
-
-    User question:
-    {user_query}
-
-    Answer:
-    """
-    response = client.chat.completions.create(
-        model=deployment_name,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
-        #temperature=0.2
-    )
-
-    return response.choices[0].message.content
-
-
-
-def generate_contextualized_response(inputs: dict) -> dict:
-    user_query = inputs["question"]
-
-    user_query = user_query.strip()
-    context_results = retrieve_context(user_query)
-    answer = generate_response(context_results, user_query)
-    return {
-        "answer": answer,
-        "prompt": user_query,
-        "retrieved": context_results
-    }
 
 async def chat_loop(user_query: str, history: list[dict] | None = None, mode: str = "auto"):
     history = history or []
