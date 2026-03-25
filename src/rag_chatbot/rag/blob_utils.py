@@ -6,13 +6,29 @@ import re
 
 
 
-def contextual_chunking(text: str, chunks: list[str]):
+def contextual_chunking(text: str, chunks: list[str]) -> list[str]:
     """
-    Appends context along with chunk text to provide better search results
+    Enhance chunks with additional LLM-generated context.
 
-    :text: entire text document e.g. one meeting transcript
-    :chunks: list of chunks without context attached
-    Larger chunk size means less chunks in total.
+    For each chunk, this function:
+    1. Uses the full document as global context
+    2. Generates a short description of the chunk via LLM
+    3. Prepends the generated context to the chunk content
+
+    This improves retrieval quality by making each chunk more
+    semantically meaningful when embedded.
+
+    Args:
+        text (str):
+            The full document text (e.g. full transcript or meeting notes)
+
+        chunks (list[str]):
+            List of raw text chunks (without context)
+
+    Returns:
+        list[str]:
+            List of chunks where each chunk is prefixed with
+            its generated contextual description
     """
 
     llm_chunker = LLMChunker()
@@ -24,18 +40,27 @@ def contextual_chunking(text: str, chunks: list[str]):
     
     return contextual_chunks
 
-def chunk_epics(meeting_notes: str) -> List[str]:
+def chunk_epics(meeting_notes: str) -> list[str]:
     """
-    Split meeting notes into chunks where each chunk corresponds to one Epic.
+    Split meeting notes into chunks based on "Epic" sections.
 
-    A chunk starts at a line like:
+    Each chunk:
+    - Starts at a line matching "Epic <number>: <title>"
+    - Ends at the next Epic heading or end of document
+
+    Example headings supported:
         Epic 1: Title
-    and continues until the next Epic heading or the end of the document.
+        Epic 2 - Dashboard
+
+    Args:
+        meeting_notes (str):
+            Full meeting notes text
 
     Returns:
-        List of dictionaries containing:
-        - epic_title: the heading line
-        - content: full chunk text for that epic
+        list[str]:
+            List of epic-based chunks, where each chunk contains:
+            - the epic heading
+            - the full text under that epic
     """
 
     # Matches lines like:
@@ -59,13 +84,9 @@ def chunk_epics(meeting_notes: str) -> List[str]:
         end = matches[i + 1].start() if i + 1 < len(matches) else len(meeting_notes)
 
         chunk_text = meeting_notes[start:end].strip()
-        epic_title = match.group(1).strip()
-
-        # chunks.append({
-        #     "epic_title": epic_title,
-        #     "content": chunk_text
-        # })
-        chunks.append(epic_title + chunk_text)
+        
+        # chunk_text includes the name of the epic 
+        chunks.append(chunk_text)
 
     return chunks
 
@@ -77,19 +98,58 @@ def chunk_from_blob(
         overlap: bool=False,
         epic_chunking: bool=False) -> list[dict]: 
     """
-    Returns transcripts chunks from each blob in the Transcripts
-    Resource group.
+    Extract and chunk text documents from an Azure Blob container.
 
-    :container_client: specifies which container client to extract blobs from
-    :doc_type: specifies what type of document we are chunking from
-    :chunk_size: size in characters for chunk
-    Larger chunk size means less chunks in total.
+    This function:
+    1. Iterates over all blobs in the container
+    2. Downloads and decodes text files
+    3. Splits text into chunks using a recursive splitter
+    4. Optionally augments chunks with:
+        - LLM-generated context (context_chunking)
+        - Epic-based structure (epic_chunking)
+    5. Returns structured chunk data for indexing
+
+    Args:
+        container_client:
+            Azure Blob container client used to list and retrieve blobs
+
+        doc_type (str):
+            Type of document (e.g. "earnings_call", "meeting_note")
+
+        chunk_size (int, optional):
+            Maximum size of each chunk (in characters)
+
+        context_chunking (bool, optional):
+            If True, prepend LLM-generated context to each chunk
+
+        overlap (bool, optional):
+            If True, apply ~10% overlap between chunks to preserve context
+
+        epic_chunking (bool, optional):
+            If True, additionally extract structured "Epic"-based chunks
+
+    Returns:
+        list[dict]:
+            List of chunk dictionaries, each containing:
+            {
+                "source": str,     # blob filename
+                "chunk_id": int,  # index of chunk within document
+                "content": str,   # chunk text (possibly contextualised)
+                "docType": str    # document type
+            }
+    
     """
+
+    # epic_chunking should not occur for documents other than meeting notes
+    if doc_type != "meeting_note":
+        epic_chunking = False
 
     overlap = int(chunk_size * 0.1) if overlap else 0 # overlap should be 10-20% of chunks size
 
-    # blobs should be a list of every blob in the transcript container
+    # retrieve and sort blobs by name for deterministic processing
+    # A container is a folder and a blob is a file, so here we are listing all the .txt files in a specific folder (container)
     blobs = sorted(container_client.list_blobs(), key=lambda b:b.name)
+
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap)
@@ -97,24 +157,25 @@ def chunk_from_blob(
     transcript_chunks = []
 
     for blob in blobs:
-        # include check to see if the uploaded file is a txt file
+        # If the file is not a text file we can't handle it
         if not blob.name.lower().endswith(".txt"):
             continue
+
         blob_client = container_client.get_blob_client(blob)
+
         download_stream = blob_client.download_blob()
        
-        transcript_text = download_stream.readall().decode("utf-8")
-        # prefer to use agentic chunking with structured data like meeting notes
-        
-
-        chunks = text_splitter.split_text(transcript_text)
+        transcript_text = download_stream.readall().decode("utf-8") # get text in file 
+     
+        chunks = text_splitter.split_text(transcript_text) # Applies recursive text splitting to text
 
         if context_chunking:
-            # replace chunks with contextual chunks
+            # replace chunks with contextual chunks (append context)
             chunks = contextual_chunking(text=transcript_text, chunks=chunks)
 
         if epic_chunking:
             epic_chunks = chunk_epics(transcript_text)
+            # epic_chunks are chunks only containing the epics, so just extend them onto the normal chunks obtained
             chunks.extend(epic_chunks)
 
         for j, chunk in enumerate(chunks):

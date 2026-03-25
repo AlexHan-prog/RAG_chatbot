@@ -1,9 +1,21 @@
-from pydantic import BaseModel, Field
-
 from src.rag_chatbot.rag.env import client, deployment_name
 
 
 class LLMChunker:
+    """
+    Uses an LLM to generate contextual summaries for document chunks.
+
+    The purpose of this class is to enrich each chunk with additional
+    retrieval-oriented context, improving search relevance in downstream
+    RAG (Retrieval-Augmented Generation) pipelines.
+
+    The generated context helps:
+    - Identify what the chunk is about
+    - Place it within the structure of the full document
+    - Improve semantic search and ranking
+    """
+
+
     instructions = """
     <document>
     {WHOLE_DOCUMENT}
@@ -27,10 +39,19 @@ class LLMChunker:
     """
     
     def __init__(self):
+        """initialises chunker with pre-configured client"""
         self.client = client
 
+    def return_response(self, document: str, chunk: str) -> str:
+        """
+        returns a brief description about the chunk passed in and where it belongs in relative to the entire document
 
-    def return_response(self, document: str, chunk: str):
+        Args:
+            document (str): Entire text document
+            chunk (str): chunk that belongs in the document
+        Returns:
+            str: context about chunk in relation to the entire document it is part of
+        """
         msg = self.instructions.format(
             WHOLE_DOCUMENT=document,
             CHUNK_CONTENT=chunk)
@@ -38,11 +59,5 @@ class LLMChunker:
         response = self.client.responses.parse(
             model=deployment_name,
             input=msg,
-            #text_format=response_model,
         )
         return response.output_text
-    
-class Response(BaseModel):
-        # output can be relevance, faithfulness, correctness
-        output: bool = Field(..., description="True or False depending on the judge criteria")
-        rationale: str = Field(..., description="Brief reason for the decision (1-3 sentences).")
