@@ -30,6 +30,5 @@ client = OpenAI(
 
 EMBEDDING_CLIENT = OpenAI(
     api_key=AZURE_OPENAI_EMBEDDING_KEY,
-    
     base_url=f"https://transcript-embeds-openai.openai.azure.com/openai/v1",
 )
