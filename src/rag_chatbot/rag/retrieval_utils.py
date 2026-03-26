@@ -485,15 +485,6 @@ if __name__ == "__main__":
             Can you summarize the earning call from Apple and Reuben's meeting notes
             """
     print(retrieve_context(test_query))
-    # # route = return_metadata(test_query)
-    # # metadata = langextract_to_metadata(route)
-    # # filter_text = build_filter(metadata)
-    # # print("\n")
-    # # print(type(route))
-    # # print("\n")
-    # # print(metadata)
-    # # print("\n")
-    # # print(filter_text)
    
 
 
