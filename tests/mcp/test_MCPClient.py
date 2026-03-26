@@ -4,7 +4,7 @@ import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.rag_chatbot.mcp.servers.clients.MCPClient import MCPClient, DEPLOYMENT_NAME
+from src.backend.mcp.servers.clients.MCPClient import MCPClient, DEPLOYMENT_NAME
 
 
 # ==================== FIXTURES ====================

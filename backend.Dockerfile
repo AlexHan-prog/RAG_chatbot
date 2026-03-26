@@ -10,4 +10,4 @@ COPY . .
 
 EXPOSE 8000
 # starts FastAPI with auto-reload (remove this for production)
-CMD ["uvicorn", "src.rag_chatbot.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "src.backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, Mock
-from src.rag_chatbot.rag.retrieval_utils import retrieve_context
+from src.backend.rag.retrieval_utils import retrieve_context
 
 
 class TestRetrieveContext:

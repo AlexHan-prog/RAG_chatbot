@@ -1,5 +1,5 @@
 import pytest
-from src.rag_chatbot.rag.retrieval_utils import create_safe_filter_for_index
+from src.backend.rag.retrieval_utils import create_safe_filter_for_index
 
 
 class TestCreateSafeFilterForIndex:

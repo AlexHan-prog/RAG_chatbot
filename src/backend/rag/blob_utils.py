@@ -1,7 +1,7 @@
 from typing import List
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from src.rag_chatbot.rag.LLMChunker import LLMChunker
+from src.backend.rag.LLMChunker import LLMChunker
 import re
 
 

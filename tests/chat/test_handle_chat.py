@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from src.rag_chatbot.rag.RAG_bot import handle_chat
+from src.backend.rag.RAG_bot import handle_chat
 
 
 # ============================================================================

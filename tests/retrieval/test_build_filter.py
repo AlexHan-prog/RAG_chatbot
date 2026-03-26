@@ -1,5 +1,5 @@
 import pytest
-from src.rag_chatbot.rag.retrieval_utils import build_filter
+from src.backend.rag.retrieval_utils import build_filter
 
 
 class TestBuildFilter:

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from src.rag_chatbot.rag.RAG_bot import RAGLLM, HISTORY_LEN
+from src.backend.rag.RAG_bot import RAGLLM, HISTORY_LEN
 
 
 # ============================================================================

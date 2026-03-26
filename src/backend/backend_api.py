@@ -2,10 +2,10 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from src.rag_chatbot.rag.RAG_bot import chat_loop
+from src.backend.rag.RAG_bot import chat_loop
 from uuid import uuid4
 from redis.exceptions import ConnectionError as RedisConnectionError
-from src.rag_chatbot.redis.redis_chat_store import (
+from src.backend.redis.redis_chat_store import (
     create_chat,
     chat_exists,
     get_messages,
@@ -14,7 +14,7 @@ from src.rag_chatbot.redis.redis_chat_store import (
     update_chat_title,
     delete_chat,
 )
-from src.rag_chatbot.redis.redis_client import get_redis
+from src.backend.redis.redis_client import get_redis
 
 router = APIRouter()
 

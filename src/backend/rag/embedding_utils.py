@@ -1,8 +1,8 @@
 
 from collections import defaultdict
 from typing import Any
-from src.rag_chatbot.rag.env import EMBEDDING_CLIENT
-from src.rag_chatbot.rag.index_utils import TRANSCRIPT_SEARCH_CLIENT, MEETING_NOTES_SEARCH_CLIENT, ensure_index_exists
+from src.backend.rag.env import EMBEDDING_CLIENT
+from src.backend.rag.index_utils import TRANSCRIPT_SEARCH_CLIENT, MEETING_NOTES_SEARCH_CLIENT, ensure_index_exists
 import hashlib
 import re
 from datetime import datetime

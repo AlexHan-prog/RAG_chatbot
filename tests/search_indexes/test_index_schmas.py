@@ -3,7 +3,7 @@ from unittest.mock import ANY, patch, Mock, MagicMock
 from azure.search.documents.indexes.models import SearchIndex
 from azure.search.documents import SearchClient
 from azure.core.exceptions import ResourceNotFoundError
-from src.rag_chatbot.rag.index_utils import (
+from src.backend.rag.index_utils import (
     make_search_client,
     ensure_index_exists,
     create_or_update_indexes,

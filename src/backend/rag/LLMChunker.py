@@ -1,4 +1,4 @@
-from src.rag_chatbot.rag.env import client, deployment_name
+from src.backend.rag.env import client, deployment_name
 
 
 class LLMChunker:

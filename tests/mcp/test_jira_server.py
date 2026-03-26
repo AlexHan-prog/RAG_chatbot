@@ -3,8 +3,8 @@ import asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.rag_chatbot.mcp.servers import jira_server
-from src.rag_chatbot.mcp.servers.jira_server import (
+from src.backend.mcp.servers import jira_server
+from src.backend.mcp.servers.jira_server import (
 	make_jira_issue_request,
 	jira_description,
 	get_all_projects,

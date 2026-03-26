@@ -3,7 +3,7 @@ import json
 from typing import Optional
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
-from src.rag_chatbot.rag.env import deployment_name, client
+from src.backend.rag.env import deployment_name, client
 from mcp.client.stdio import stdio_client
 import os
 from dotenv import load_dotenv

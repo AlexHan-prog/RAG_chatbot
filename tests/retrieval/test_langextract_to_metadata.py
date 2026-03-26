@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime
 from langextract.core.data import AnnotatedDocument, Extraction
-from src.rag_chatbot.rag.retrieval_utils import langextract_to_metadata
+from src.backend.rag.retrieval_utils import langextract_to_metadata
 
 
 class TestLangextractToMetadata:

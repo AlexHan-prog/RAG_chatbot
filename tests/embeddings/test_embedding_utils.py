@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 
-from src.rag_chatbot.rag.embedding_utils import (
+from src.backend.rag.embedding_utils import (
     generate_embeddings,
     process_and_store_chunks,
     get_search_client_for_doc_type,

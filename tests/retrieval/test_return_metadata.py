@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from langextract.core.data import AnnotatedDocument, Extraction
-from src.rag_chatbot.rag.retrieval_utils import return_metadata
+from src.backend.rag.retrieval_utils import return_metadata
 
 
 class TestReturnMetadata:

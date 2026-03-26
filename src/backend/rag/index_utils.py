@@ -1,4 +1,4 @@
-from src.rag_chatbot.rag.env import search_endpoint, admin_key, vector_dimensions
+from src.backend.rag.env import search_endpoint, admin_key, vector_dimensions
 from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential

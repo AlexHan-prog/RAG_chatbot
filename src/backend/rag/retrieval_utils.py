@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, Field
-from src.rag_chatbot.rag.embedding_utils import generate_embeddings
-from src.rag_chatbot.rag.env import client, deployment_name
-from src.rag_chatbot.rag.index_utils import TRANSCRIPT_SEARCH_CLIENT, MEETING_NOTES_SEARCH_CLIENT
+from src.backend.rag.embedding_utils import generate_embeddings
+from src.backend.rag.env import client, deployment_name
+from src.backend.rag.index_utils import TRANSCRIPT_SEARCH_CLIENT, MEETING_NOTES_SEARCH_CLIENT
 from azure.search.documents.models import VectorizedQuery
 import textwrap
 import langextract as lx

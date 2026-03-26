@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.rag_chatbot.rag.RAG_bot import MCPLLM, HISTORY_LEN, deployment_name
+from src.backend.rag.RAG_bot import MCPLLM, HISTORY_LEN, deployment_name
 
 @pytest.fixture
 def mock_mcp_client():

@@ -2,9 +2,9 @@
 import json
 from typing import Literal
 from pydantic import BaseModel, Field
-from src.rag_chatbot.rag.retrieval_utils import retrieve_context
-from src.rag_chatbot.rag.env import deployment_name, client
-from src.rag_chatbot.mcp.servers.clients.MCPClient import MCPClient
+from src.backend.rag.retrieval_utils import retrieve_context
+from src.backend.rag.env import deployment_name, client
+from src.backend.mcp.servers.clients.MCPClient import MCPClient
 
 HISTORY_LEN = 6
 

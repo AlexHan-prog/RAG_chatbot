@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.rag_chatbot.rag.RAG_bot import GeneralLLM, HISTORY_LEN, deployment_name
+from src.backend.rag.RAG_bot import GeneralLLM, HISTORY_LEN, deployment_name
 
 @pytest.fixture
 def mock_client():

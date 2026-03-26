@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from src.rag_chatbot.rag.env import client, deployment_name
+from src.backend.rag.env import client, deployment_name
 import os
 from openai import OpenAI
 

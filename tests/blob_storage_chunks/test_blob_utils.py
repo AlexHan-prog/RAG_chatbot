@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, Mock, MagicMock
 from types import SimpleNamespace
 
-from src.rag_chatbot.rag.blob_utils import (
+from src.backend.rag.blob_utils import (
 	contextual_chunking,
 	chunk_epics,
 	chunk_from_blob,

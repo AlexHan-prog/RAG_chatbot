@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.rag_chatbot.backend_api import router
+from src.backend.backend_api import router
 
 app = FastAPI()
 

@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from src.rag_chatbot.rag.RAG_bot import decide_route
+from src.backend.rag.RAG_bot import decide_route
 
 def test_decide_route_llm_mode():
     result = decide_route("What can this system do?", mode="llm")

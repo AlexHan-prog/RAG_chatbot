@@ -1,5 +1,5 @@
 from langsmith import evaluate, Client
-from src.rag_chatbot.rag.RAG_bot import generate_contextualized_response
+from src.backend.rag.RAG_bot import generate_contextualized_response
 from evaluation.evaluators.retrieval_eval import recall_at_k, LLM_judge_relevance, mrr, map_at_k
 from evaluation.evaluators.generation_eval import LLM_judge_answer_relevance, LLM_judge_answer_correctness, LLM_judge_answer_faithfulness
 
