@@ -1,24 +1,8 @@
-from azure.storage.blob import BlobServiceClient, ContainerClient
-import os
+from azure.storage.blob import ContainerClient
 import pandas as pd 
-from dotenv import load_dotenv
 
-load_dotenv('.env')
-
-BLOB_SAS_URL = os.getenv("BLOB_SAS_URL")
-container_name = "transcripts"
 folder_path = "earnings_calls"  # virtual folder 
-EARNING_CALL_URL = "hf://datasets/yeong-hwan/2024-earnings-call-transcript/2024-earnings-call-transcripts.jsonl"
 
-container_client = ContainerClient.from_container_url(BLOB_SAS_URL)
-
-
-def save_formatted_transcript_local(transcript: str):
-    try:
-        with open("data/2024-earning-call-transcript.txt", "wt", encoding="utf-8") as f:
-            f.write(transcript)
-    except FileNotFoundError as e:
-        print(e)
 
 def format_transcript(transcript: list) -> str:
     """Method should return transcript in a format similar to that of 
@@ -28,8 +12,11 @@ def format_transcript(transcript: list) -> str:
     <v Alex Hanna (speaker name))>This is a test for meeting transcriptions.
     This is about to be over.</v>"""
     """
-    transcript: list
-        list of what each speaker says followed one after the other
+    Args:  
+        transcript (list): list of what each speaker says followed one after the other
+    Returns:
+        str: The entire transcript formatted in the desired way (described before) 
+
     """
     speakers = set()
     transcript_txt = ""
@@ -45,19 +32,16 @@ def format_transcript(transcript: list) -> str:
 
 
 
-def add_meta_data(metadata: dict, blob_name: str):
-    blob_client = container_client.get_blob_client(blob_name)
+def read_in_transcript(url: str) -> pd.DataFrame:
+    """
+    One off method used to read in public dataset of earnings calls in json format and upload them to a data folder locally.
+    Public earning calls dataset available at: hf://datasets/yeong-hwan/2024-earnings-call-transcript/2024-earnings-call-transcripts.jsonl 
 
-    metadata = {
-        "meetingDate": "2025-11-30",
-        "department": "Engineering",
-        "transcriptType": "SprintReview"
-    }
+    Reads in json and converts to pandas df.
 
-    blob_client.set_blob_metadata(metadata)
-
-
-def read_in_transcript(url: str = EARNING_CALL_URL) -> pd.DataFrame:
+    Args:
+        url (str): url of json dataset to read in
+    """
     df = pd.read_json(url, lines=True)
     #df.to_csv("data/2024-earnings-call-transcript.csv", index=False)
     df.to_json("data/2024-earnings-call-transcript.json",
@@ -65,13 +49,22 @@ def read_in_transcript(url: str = EARNING_CALL_URL) -> pd.DataFrame:
     return df
 
 
-def send_to_storage(ind = 5):
+def send_to_storage(container_client_url: str, data_file: str, ind: int = 5):
+    """
+    Converts a json earning call transcript into a formatted string similar to a .vtt file of a transcript from Microsoft Teams
+    and uploads it to a specified container client in Azure blob storage
+
+    Args:
+        container_client_url (str): The ""SAS"" url of the container client you wish to upload to in Azure Blob storage
+        data_file (str): local json data file (file path)
+        ind (int): starting index of first record from data_file df you want to upload 
+    """
     blob_name = f"{folder_path}/"
     
+    container_client = ContainerClient.from_container_url(container_client_url)
 
-    #df = pd.read_csv("data/2024-earnings-call-transcript.csv")
-    df = pd.read_json("data/2024-earnings-call-transcript.json", lines=True)
-    # get a specific call's transcript-
+    df = pd.read_json(data_file, lines=True)
+   
     transcript = df.loc[ind, "conversations"]
     formatted_transcript = format_transcript(transcript)
 
@@ -82,7 +75,6 @@ def send_to_storage(ind = 5):
     quarter = str(df.loc[ind, "q"]).strip()
     transcript_name = f"{ticker}-{date}-{quarter}.txt"
 
-
     blob_name += transcript_name
     container_client.upload_blob(
             name=blob_name,
@@ -90,5 +82,9 @@ def send_to_storage(ind = 5):
             overwrite=True  # set to False to avoid overwriting
     )
 
-    print(f"Uploaded '{transcript_name}' to container '{container_name}' at path '{blob_name}'")
+    print(f"Uploaded '{transcript_name}' to container '{container_client.container_name}' at path '{blob_name}'")
+
+if __name__ == "__main__":
+    pass
+    #send_to_storage()
 
